@@ -1,10 +1,10 @@
-import React, { useReducer, useState, useEffect } from 'react'
+import React, { useEffect, useReducer, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { getPost, getPosts } from '../api/post'
 import { Picker_Picture, Post, PostContent, User } from '../api/types'
+import { getAllUser } from '../api/user'
 import Field from '../private/Field'
 import ImageGalleryPicker from './ImageGalleryPicker'
-import { getPost } from '../api/post'
-
 
 type FormEvent =
     | React.ChangeEvent<HTMLTextAreaElement>
@@ -20,7 +20,6 @@ const formReducer = (state: Post | PostContent, event: FormData) => {
     }
 }
 
-
 const EditPost = () => {
     const [users, setUsers] = useState<Array<User>>([])
     const [showPictureModal, setShowPictureModal] = useState<boolean>(false)
@@ -30,6 +29,24 @@ const EditPost = () => {
     )
     let { id } = useParams() // post id from url
     const navigate = useNavigate() // create a navigate function instance
+
+    async function _getPost(id: number){  
+        const data = await getPost(id);
+        convertToFormData(data);
+    }
+
+    useEffect(() => {
+        _getPost(Number(id));
+    }, [id]);
+
+    async function _getUsers(){
+        const data = await getAllUser();
+        setUsers(data);
+    }
+
+    useEffect(() => {
+        _getUsers();
+    }, []);
 
     function handleModalPictureSubmit(picture: Picker_Picture) {
         setFormData({
@@ -53,7 +70,6 @@ const EditPost = () => {
         navigate('/')
     }
 
-
     function handleChange(event: FormEvent) {
         //
         const value =
@@ -70,23 +86,13 @@ const EditPost = () => {
         // helper to convert post data into formData
         // use it before set formData with API data
         // ex: convertToFormData(data):
-        ; (Object.keys(post) as Array<keyof typeof post>).map((key) => {
+        ;(Object.keys(post) as Array<keyof typeof post>).map((key) => {
             setFormData({
                 name: key,
                 value: post[key],
             })
         })
     }
-
-    async function _getPost(id: number) {
-        const data = await getPost(id);
-        convertToFormData(data)
-    }
-
-    useEffect(() => {
-        // chaque fois que l'id change
-        _getPost(Number(id));
-    }, [id]);
 
     function handleToggleModal() {
         // Show & Hide picture modal
@@ -107,10 +113,12 @@ const EditPost = () => {
         if (formData.userId) {
             // [WORK]
             // You need to find the author name with the server
-            return '[TO DO]'
-        } else {
+            const selectedUser = users.find((user) => user.id === formData.userId)
+            if (selectedUser){
+                return selectedUser.name
+            }
+        } 
             return 'Unknown author'
-        }
     }
 
     return (
@@ -123,6 +131,7 @@ const EditPost = () => {
                         className="input"
                         type="text"
                         placeholder="Text input"
+                        onChange={handleChange}
                         value={formData.title}
                     />
                 </Field>
@@ -132,6 +141,7 @@ const EditPost = () => {
                         name="body"
                         className="textarea"
                         placeholder="e.g. Hello world"
+                        onChange={handleChange}
                         value={formData.body}
                     />
                 </Field>
